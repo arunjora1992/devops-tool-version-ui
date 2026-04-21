@@ -1,0 +1,40 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      args:
+        - HTTP_PROXY=${HTTP_PROXY:-}
+        - HTTPS_PROXY=${HTTPS_PROXY:-}
+    container_name: devops-dashboard-backend
+    restart: unless-stopped
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - CACHE_TTL_SECONDS=${CACHE_TTL_SECONDS:-3600}
+      # Clear proxy at runtime so local traffic goes directly
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - dashboard-net
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: devops-dashboard-frontend
+    restart: unless-stopped
+    ports:
+      - "${DASHBOARD_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - dashboard-net
+
+networks:
+  dashboard-net:
+    driver: bridge
